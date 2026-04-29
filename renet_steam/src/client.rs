@@ -22,6 +22,7 @@ impl SteamClientTransport {
         let connection = client
             .networking_sockets()
             .connect_p2p(NetworkingIdentity::new_steam_id(*steam_id), 0, options)?;
+
         Ok(Self {
             client,
             state: ConnectionState::Connected { connection },
@@ -36,14 +37,18 @@ impl SteamClientTransport {
 
     fn is_disconnected(&self) -> bool {
         let status = self.connection_state();
-        status == NetworkingConnectionState::ClosedByPeer
-            || status == NetworkingConnectionState::ProblemDetectedLocally
-            || status == NetworkingConnectionState::None
+        matches!(
+            status,
+            NetworkingConnectionState::ClosedByPeer | NetworkingConnectionState::ProblemDetectedLocally | NetworkingConnectionState::None
+        )
     }
 
     fn is_connecting(&self) -> bool {
         let status = self.connection_state();
-        status == NetworkingConnectionState::Connecting || status == NetworkingConnectionState::FindingRoute
+        matches!(
+            status,
+            NetworkingConnectionState::Connecting | NetworkingConnectionState::FindingRoute
+        )
     }
 
     fn connection_state(&self) -> NetworkingConnectionState {
@@ -107,13 +112,12 @@ impl SteamClientTransport {
             client.disconnect_due_to_transport();
 
             if let ConnectionState::Connected { connection } = &self.state {
-                let end_reason = self
-                    .client
-                    .networking_sockets()
-                    .get_connection_info(connection)
-                    .map(|info| info.end_reason())
-                    .unwrap_or_default()
-                    .unwrap_or(NetConnectionEnd::App(AppNetConnectionEnd::generic_normal()));
+                let mut end_reason = NetConnectionEnd::App(AppNetConnectionEnd::generic_normal());
+                if let Ok(info) = self.client.networking_sockets().get_connection_info(connection) {
+                    if let Some(reason) = info.end_reason() {
+                        end_reason = reason;
+                    }
+                };
 
                 self.state = ConnectionState::Disconnected { end_reason };
             }
@@ -150,9 +154,10 @@ impl SteamClientTransport {
         let ConnectionState::Connected { connection } = &mut self.state else {
             unreachable!()
         };
-        let packets = client.get_packets_to_send();
-        for packet in packets {
-            connection.send_message(&packet, SendFlags::UNRELIABLE)?;
+        for packet in client.get_packets_to_send() {
+            if let Err(e) = connection.send_message(&packet, SendFlags::UNRELIABLE) {
+                log::error!("Failed to send packet to server: {e}");
+            }
         }
 
         connection.flush_messages()

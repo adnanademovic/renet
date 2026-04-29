@@ -169,17 +169,17 @@ impl SteamServerTransport {
 
     /// Send packets to connected clients.
     pub fn send_packets(&mut self, server: &mut RenetServer) {
-        'clients: for client_id in server.clients_id() {
+        for client_id in server.clients_id() {
             let Some(connection) = self.connections.get(&client_id) else {
                 log::error!("Error while sending packet: connection not found");
                 continue;
             };
             let packets = server.get_packets_to_send(client_id).unwrap();
             // TODO: while this works fine we should probably use the send_messages function from the listen_socket
-            for packet in packets {
+            'packets: for packet in packets {
                 if let Err(e) = connection.send_message(&packet, SendFlags::UNRELIABLE) {
                     log::error!("Failed to send packet to client {client_id}: {e}");
-                    continue 'clients;
+                    break 'packets;
                 }
             }
 
