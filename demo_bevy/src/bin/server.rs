@@ -71,6 +71,7 @@ fn add_steam_network(app: &mut App) {
     let steam_transport_config = SteamServerConfig {
         max_clients: 10,
         access_permission: AccessPermission::Public,
+        send_buffer_size: None,
     };
     let transport = SteamServerTransport::new(steam_client.clone(), steam_transport_config).unwrap();
 

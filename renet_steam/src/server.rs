@@ -6,7 +6,7 @@ use std::{
 use renet::{ClientId, RenetServer};
 use steamworks::{
     networking_sockets::{InvalidHandle, ListenSocket, NetConnection},
-    networking_types::{AppNetConnectionEnd, ListenSocketEvent, NetConnectionEnd, NetworkingConfigEntry, SendFlags},
+    networking_types::{AppNetConnectionEnd, ListenSocketEvent, NetConnectionEnd, NetworkingConfigEntry, NetworkingConfigValue, SendFlags},
     Client, FriendFlags, LobbyId, SteamId,
 };
 
@@ -28,6 +28,7 @@ pub enum AccessPermission {
 pub struct SteamServerConfig {
     pub max_clients: usize,
     pub access_permission: AccessPermission,
+    pub send_buffer_size: Option<i32>,
 }
 
 pub struct SteamServerTransport {
@@ -40,7 +41,15 @@ pub struct SteamServerTransport {
 
 impl SteamServerTransport {
     pub fn new(client: Client, config: SteamServerConfig) -> Result<Self, InvalidHandle> {
-        let options: Vec<NetworkingConfigEntry> = Vec::new();
+        let mut options: Vec<NetworkingConfigEntry> = Vec::new();
+
+        if let Some(send_buffer_size) = config.send_buffer_size {
+            options.push(NetworkingConfigEntry::new_int32(
+                NetworkingConfigValue::SendBufferSize,
+                send_buffer_size,
+            ));
+        }
+
         let listen_socket = client.networking_sockets().create_listen_socket_p2p(0, options)?;
 
         Ok(Self {

@@ -2,7 +2,10 @@ use super::MAX_MESSAGE_BATCH_SIZE;
 use renet::RenetClient;
 use steamworks::{
     networking_sockets::{InvalidHandle, NetConnection},
-    networking_types::{AppNetConnectionEnd, NetConnectionEnd, NetworkingConnectionState, NetworkingIdentity, SendFlags},
+    networking_types::{
+        AppNetConnectionEnd, NetConnectionEnd, NetworkingConfigEntry, NetworkingConfigValue, NetworkingConnectionState, NetworkingIdentity,
+        SendFlags,
+    },
     Client, SteamError, SteamId,
 };
 
@@ -17,8 +20,14 @@ pub struct SteamClientTransport {
 }
 
 impl SteamClientTransport {
-    pub fn new(client: Client, steam_id: &SteamId) -> Result<Self, InvalidHandle> {
-        let options = Vec::new();
+    pub fn new(client: Client, steam_id: &SteamId, send_buffer_size: Option<i32>) -> Result<Self, InvalidHandle> {
+        let mut options = Vec::new();
+        if let Some(send_buffer_size) = send_buffer_size {
+            options.push(NetworkingConfigEntry::new_int32(
+                NetworkingConfigValue::SendBufferSize,
+                send_buffer_size,
+            ));
+        }
         let connection = client
             .networking_sockets()
             .connect_p2p(NetworkingIdentity::new_steam_id(*steam_id), 0, options)?;

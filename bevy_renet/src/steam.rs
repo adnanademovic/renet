@@ -109,7 +109,7 @@ pub struct SteamClientTransport(pub renet_steam::SteamClientTransport);
 
 impl SteamClientTransport {
     pub fn new(client: Client, steam_id: &SteamId) -> Result<Self, InvalidHandle> {
-        renet_steam::SteamClientTransport::new(client, steam_id).map(Self)
+        renet_steam::SteamClientTransport::new(client, steam_id, None).map(Self)
     }
 }
 
